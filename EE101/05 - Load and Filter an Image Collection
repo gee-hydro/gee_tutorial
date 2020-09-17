@@ -1,0 +1,5 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var L8 = ee.ImageCollection("LANDSAT/LC08/C01/T1_TOA");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var filtered = L8.filterDate('2016-05-01', '2016-05-15');
+Map.addLayer(filtered);

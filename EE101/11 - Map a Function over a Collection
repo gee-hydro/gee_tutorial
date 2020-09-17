@@ -1,0 +1,17 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var s2 = ee.ImageCollection("COPERNICUS/S2");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var rgb_vis = {
+  min: 0,
+  max: 2500,
+  gamma: 1.4,
+  bands: ['B4', 'B3', 'B2']
+};
+function addNDVI(image) {
+  var ndvi = image.normalizedDifference(['B8', 'B4']);
+  return image.addBands(ndvi);
+}
+var filtered = s2.filterDate('2016-04-01', '2016-07-01');
+var with_ndvi = filtered.map(addNDVI);
+Map.addLayer(filtered.median(), rgb_vis, 'RGB');
+Map.addLayer(with_ndvi.median(), rgb_vis, 'NDVI');

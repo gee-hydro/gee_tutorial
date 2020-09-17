@@ -1,0 +1,15 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var roi = /* color: #d63000 */ee.Geometry.Point([-122.10205078125, 37.43125050179359]),
+    L8 = ee.ImageCollection("LANDSAT/LC08/C01/T1_TOA");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var filtered = L8.filterDate('2016-05-01', '2016-05-31')
+    .filterBounds(roi);
+
+var rgb_vis = {
+  min: 0,
+  max: 0.3,
+  gamma: 1.5,
+  bands: ['B4', 'B3', 'B2']
+};
+var image = ee.Image(filtered.first());
+Map.addLayer(image, rgb_vis, 'RGB');

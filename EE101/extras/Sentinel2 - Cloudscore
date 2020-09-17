@@ -1,0 +1,74 @@
+var l7Bands = ee.Dictionary({
+  'red': 'B3',
+  'green': 'B2',
+  'blue': 'B1',
+  'nir': 'B4',
+  'swir1': 'B5',
+  'swir2': 'B7'
+});
+var s2Bands = ee.Dictionary({
+  'red': 'B4',
+  'green': 'B3',
+  'blue': 'B2',
+  'nir': 'B8',
+  'swir1': 'B11',
+  'swir2': 'B12',
+});
+
+var sentinelCloudScore = function(scene) {
+  // rename S2 bands to match expected L5 bands
+  scene = scene.select(s2Bands.values(l7Bands.keys()), l7Bands.values());
+  // add a 0-filled thermal band
+  var fakeThermal = scene.select(0).multiply(0).rename('B6');
+  // divide to get realistic Landsat TOA pixel values
+  var fakeLandsat = scene.addBands(fakeThermal).float().divide(10000);
+  // add Landsat metadata so simpleCloudScore knows which Landsat band names to use
+  fakeLandsat = ee.Image(fakeLandsat.setMulti({
+    'SENSOR_ID': 'TM',
+    'SPACECRAFT_ID': 'LANDSAT_5'
+  }));
+  var cloudScore = ee.Algorithms.Landsat.simpleCloudScore(fakeLandsat).select('cloud');
+  return cloudScore;
+};
+
+var eachImage = function(image) {
+  var cloudScore = sentinelCloudScore(image);
+  // throw out any pixel 50% cloud probability or higher 
+  // before computing cloud threshold for collection.
+  var rgb = image.select(s2Bands.values(['red', 'green', 'blue']), ['red', 'green', 'blue']);
+  var cloudMask = cloudScore.lt(50).reduceNeighborhood(ee.Reducer.max(), ee.Kernel.square(4));
+  return rgb.addBands(cloudScore).updateMask(cloudMask);
+};
+
+// reduce image collection based on given percentile of cloudScore band
+function composite(collection, percentile, cloudScoreRange) {
+  var minCloud = collection.select('cloud').min();
+  var masked = collection.map(function (image) {
+    var cloudThreshold = minCloud.add(cloudScoreRange);
+    var cloudScore = image.select('cloud');
+    var cloudMask = cloudScore.lte(cloudThreshold);
+    image = image.updateMask(cloudMask);
+    image = image.divide(3000).clamp(0,1);
+    return image;
+  });
+  return masked.reduce(ee.Reducer.median())
+    .rename(ee.Image(masked.first()).bandNames());
+}
+
+var src = ee.ImageCollection('COPERNICUS/S2')
+    .filterBounds(Map.getBounds(true))
+    .select(s2Bands.values(['red', 'green', 'blue']), ['red', 'green', 'blue'])
+    .median();
+
+var ic = ee.ImageCollection('COPERNICUS/S2')
+    .filterBounds(Map.getBounds(true))
+    .map(eachImage);
+
+var median = ic.select(['red','green','blue', 'cloud']);
+
+median = composite(median, 30, 20);
+
+median = median.mask(median.mask().gt(0).reduce(ee.Reducer.min()));
+
+Map.addLayer(src, {min:0, max:3000}, 'source',  false);
+Map.addLayer(median, {min:0, max:1}, 'image');

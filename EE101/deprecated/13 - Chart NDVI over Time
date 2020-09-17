@@ -1,0 +1,19 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var s2 = ee.ImageCollection("COPERNICUS/S2"),
+    roi = /* color: #ffc82d */ee.Geometry.Point([14.38934326171875, 50.05120770091101]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var rgb_vis = {
+  min: 0,
+  max: 2500,
+  gamma: 1.4,
+  bands: ['B4', 'B3', 'B2']
+};
+function addNDVI(image) {
+  var ndvi = image.normalizedDifference(['B8', 'B4']);
+  return image.addBands(ndvi);
+}
+var filtered = s2.filterDate('2016-04-01', '2016-07-01');
+var with_ndvi = filtered.map(addNDVI);
+var greenest = with_ndvi.qualityMosaic('nd');
+Map.addLayer(greenest, rgb_vis);
+print(ui.Chart.image.series(with_ndvi.select('nd'), roi));
