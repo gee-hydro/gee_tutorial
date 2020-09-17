@@ -29,9 +29,9 @@ pkg_export.ExportImgCol(imgcol_8d.limit(3), null, options, 'PMLV2_latest');
 
 /** second solution --------------------------------------------------------- */
 // export bandnames
-var date = imgcol_8d.limit("system:time_start")
+var date = imgcol_8d.aggregate_array("system:time_start")
     .map(function (x) { return (ee.Date(x)) });
-// print(date)
+print(date)
 // var bandnames = img.bandNames();
 // var f = ee.FeatureCollection(ee.Feature(null, {bandname: bandnames}));
 // var task_bandname = task.concat('names');
